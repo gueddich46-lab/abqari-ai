@@ -17,9 +17,23 @@ export default {async fetch(request,env){
   for(const x of recent){if(x&&['user','assistant'].includes(x.role)&&typeof x.content==='string'&&x.content.trim())messages.push({role:x.role,content:x.content.slice(0,2000)})}
   messages.push({role:'user',content:message});
   try{
+    // Discover accessible chat models for this API key instead of assuming a fixed model ID.
+    const modelsResponse=await fetch('https://api.groq.com/openai/v1/models',{
+      headers:{'Authorization':'Bearer '+env.GROQ_API_KEY},
+      signal:AbortSignal.timeout(10000)
+    });
+    if(!modelsResponse.ok){
+      console.error('Groq model discovery failed',modelsResponse.status);
+      return reply({error:'تعذّر جلب نماذج Groq المتاحة للمفتاح. (Groq '+modelsResponse.status+')'},502);
+    }
+    const catalog=await modelsResponse.json();
+    const available=(Array.isArray(catalog.data)?catalog.data:[]).map(x=>x.id).filter(x=>typeof x==='string');
+    const preferences=['llama-3.3-70b-versatile','llama-3.1-8b-instant','openai/gpt-oss-120b','openai/gpt-oss-20b'];
+    const model=preferences.find(id=>available.includes(id)) || available.find(id=>/llama|gpt-oss|qwen/i.test(id) && !/guard|safety|whisper|tts|playai|vision|embedding/i.test(id));
+    if(!model)return reply({error:'لا توجد نماذج محادثة متاحة لهذا المفتاح في Groq.'},502);
     const upstream=await fetch('https://api.groq.com/openai/v1/chat/completions',{
       method:'POST',headers:{'Authorization':'Bearer '+env.GROQ_API_KEY,'Content-Type':'application/json'},
-      body:JSON.stringify({model:'llama-3.1-8b-instant',messages,temperature:0.65,max_completion_tokens:1000}),
+      body:JSON.stringify({model,messages,temperature:0.65,max_completion_tokens:1000}),
       signal:AbortSignal.timeout(25000)
     });
     if(!upstream.ok){
