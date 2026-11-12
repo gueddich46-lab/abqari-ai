@@ -1,4 +1,4 @@
-name = "abqari-ai"
+name = "abqari-ai-server"
 main = "backend/worker.js"
 compatibility_date = "2026-11-01"
 workers_dev = true
