@@ -25,9 +25,10 @@ export default {async fetch(request,env){
     if(!upstream.ok){
       let detail={};try{detail=await upstream.json()}catch{}
       const raw=String(detail.error?.message||'');
-      let reason=upstream.status===401?'مفتاح Groq غير صالح.':upstream.status===429?'تم بلوغ حد استخدام Groq مؤقتًا.':upstream.status===404?'نموذج Groq غير متاح حاليًا.':'تعذّر الحصول على إجابة من Groq.';
+      let reason=upstream.status===401?'مفتاح Groq غير صالح.':upstream.status===429?'تم بلوغ حد استخدام Groq مؤقتًا.':upstream.status===404?'تعذّر العثور على النموذج أو المسار لدى Groq.':'تعذّر الحصول على إجابة من Groq.';
       console.error('Groq upstream status',upstream.status,raw.replace(/gsk_[A-Za-z0-9_-]+/g,'[hidden]').slice(0,160));
-      return reply({error:reason+' (Groq '+upstream.status+')'},upstream.status===429?429:502);
+      const safeDetail=raw.replace(/gsk_[A-Za-z0-9_-]+/g,'[hidden]').replace(/Bearer\s+\S+/gi,'Bearer [hidden]').slice(0,350);
+      return reply({error:reason+' (Groq '+upstream.status+')'+(safeDetail?' — '+safeDetail:'')},upstream.status===429?429:502);
     }
     const result=await upstream.json();
     const answer=result.choices?.[0]?.message?.content;
