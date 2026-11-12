@@ -26,7 +26,7 @@ export default {async fetch(request,env){
     }
     const modelData=await modelResponse.json();
     const available=(modelData.models||[]).filter(m=>Array.isArray(m.supportedGenerationMethods)&&m.supportedGenerationMethods.includes('generateContent'));
-    const preferred=['gemini-2.5-flash','gemini-2.5-flash-lite','gemini-2.0-flash','gemini-1.5-flash'];
+    const preferred=['gemini-3.8-flash','gemini-3-flash','gemini-3.5-flash','gemini-2.5-flash-lite','gemini-2.5-flash','gemini-2.0-flash'];
     const model=preferred.map(id=>available.find(m=>m.name==='models/'+id)).find(Boolean)||available.find(m=>/gemini.*flash/i.test(m.name))||available.find(m=>/gemini/i.test(m.name));
     if(!model)return reply({error:'لا يوجد نموذج Gemini متاح لتوليد الإجابات بهذا المفتاح.'},502);
     const upstream=await fetch('https://generativelanguage.googleapis.com/v1beta/'+model.name+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':env.GEMINI_API_KEY},body:JSON.stringify({systemInstruction:{parts:[{text:'You are Abqari AI, a helpful Arabic-first assistant. Respond clearly and accurately. App created by Bashir Qaddish (بشير قديش).'}]},contents,generationConfig:{maxOutputTokens:1000}})});
