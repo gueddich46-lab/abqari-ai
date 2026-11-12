@@ -17,7 +17,7 @@ export default {async fetch(request,env){
   contents.push({role:'user',parts:[{text:message}]});
   try{
     const upstream=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':env.GEMINI_API_KEY},body:JSON.stringify({systemInstruction:{parts:[{text:'You are Abqari AI, a helpful Arabic-first assistant. Respond clearly and accurately. App created by Bashir Qaddish (بشير قديش).'}]},contents,generationConfig:{maxOutputTokens:1000}})});
-    if(!upstream.ok)return reply({error:upstream.status===429?'انتهت الحصة المتاحة مؤقتًا':'خدمة الذكاء الاصطناعي غير متاحة الآن'},upstream.status===429?429:502);
+    if(!upstream.ok){const status=upstream.status;const messages={400:'طلب Gemini غير صالح (400). تحقق من إعدادات النموذج.',401:'مفتاح Gemini غير مقبول (401).',403:'مفتاح Gemini لا يملك صلاحية الوصول أو توجد قيود على الخدمة (403).',404:'نموذج Gemini غير متاح لهذا المفتاح (404).',429:'تم بلوغ حد استخدام Gemini مؤقتًا (429).'};return reply({error:messages[status]||`تعذّر الاتصال بخدمة Gemini (رمز ${status})`},status===429?429:502)}
     const result=await upstream.json();const text=result.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('').trim();
     return text?reply({reply:text}):reply({error:'لم تصل إجابة من الخدمة'},502)
   }catch{return reply({error:'تعذّر الاتصال بخدمة الذكاء الاصطناعي'},502)}
