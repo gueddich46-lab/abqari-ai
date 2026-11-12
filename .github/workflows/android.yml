@@ -1,0 +1,127 @@
+name: Build Abqari Android APK
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/android.yml'
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Generate Android project
+        run: |
+          mkdir -p android/app/src/main/java/com/abqari/ai android/app/src/main/res/mipmap-xxxhdpi
+          cat > android/settings.gradle <<'EOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+          rootProject.name = 'AbqariAI'
+          include ':app'
+          EOF
+          cat > android/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.7.3' apply false
+          }
+          EOF
+          cat > android/app/build.gradle <<'EOF'
+          plugins { id 'com.android.application' }
+          android {
+              namespace 'com.abqari.ai'
+              compileSdk 35
+              defaultConfig {
+                  applicationId 'com.abqari.ai'
+                  minSdk 23
+                  targetSdk 35
+                  versionCode 1
+                  versionName '1.0'
+              }
+          }
+          EOF
+          cat > android/app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <uses-permission android:name="android.permission.INTERNET"/>
+            <application android:label="عبقري AI" android:icon="@mipmap/ic_launcher" android:usesCleartextTraffic="false" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:supportsRtl="true">
+              <activity android:name=".MainActivity" android:exported="true">
+                <intent-filter>
+                  <action android:name="android.intent.action.MAIN"/>
+                  <category android:name="android.intent.category.LAUNCHER"/>
+                </intent-filter>
+              </activity>
+            </application>
+          </manifest>
+          EOF
+          cat > android/app/src/main/java/com/abqari/ai/MainActivity.java <<'EOF'
+          package com.abqari.ai;
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+          import android.webkit.WebChromeClient;
+          import android.webkit.WebSettings;
+          import android.view.View;
+          import android.graphics.Color;
+          import android.widget.Toast;
+          public class MainActivity extends Activity {
+            WebView web;
+            @Override public void onCreate(Bundle b) {
+              super.onCreate(b);
+              getWindow().setStatusBarColor(Color.rgb(8,13,32));
+              getWindow().setNavigationBarColor(Color.rgb(8,13,32));
+              web=new WebView(this);
+              web.setBackgroundColor(Color.rgb(8,13,32));
+              web.getSettings().setJavaScriptEnabled(true);
+              web.getSettings().setDomStorageEnabled(true);
+              web.getSettings().setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+              web.setWebViewClient(new WebViewClient());
+              web.setWebChromeClient(new WebChromeClient());
+              setContentView(web);
+              web.loadUrl("https://gueddich46-lab.github.io/abqari-ai/");
+            }
+            @Override public void onBackPressed() {
+              if(web.canGoBack()) web.goBack(); else super.onBackPressed();
+            }
+          }
+          EOF
+      - name: Generate brain icon
+        run: |
+          python -m pip install cairosvg
+          cat > /tmp/icon.svg <<'EOF'
+          <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+          <defs><linearGradient id="g"><stop stop-color="#03d9ff"/><stop offset="1" stop-color="#d84bff"/></linearGradient><radialGradient id="bg"><stop stop-color="#172b69"/><stop offset="1" stop-color="#080d20"/></radialGradient></defs>
+          <rect width="512" height="512" rx="108" fill="url(#bg)"/>
+          <circle cx="256" cy="240" r="199" fill="none" stroke="url(#g)" stroke-width="7"/>
+          <path d="M249 139 C220 102 164 112 151 153 C103 151 91 206 117 229 C99 265 133 301 172 287 C192 318 231 304 249 277 M263 139 C292 102 348 112 361 153 C409 151 421 206 395 229 C413 265 379 301 340 287 C320 318 281 304 263 277" fill="none" stroke="url(#g)" stroke-width="13" stroke-linecap="round"/>
+          <g stroke="url(#g)" stroke-width="7" fill="none"><path d="M256 137V316 M162 185H209L240 215 M350 185H303L272 215 M151 241H211 M361 241H301 M199 282L237 255 M313 282L275 255"/></g>
+          <g fill="#66f5ff"><circle cx="162" cy="185" r="9"/><circle cx="350" cy="185" r="9"/><circle cx="151" cy="241" r="9"/><circle cx="361" cy="241" r="9"/></g>
+          <rect x="212" y="204" width="88" height="78" rx="15" fill="#07152f" stroke="#2ee9ff" stroke-width="8"/><text x="256" y="258" text-anchor="middle" font-family="Arial" font-weight="bold" font-size="43" fill="white">AI</text>
+          <path d="M256 369Q202 332 93 353L113 420Q197 397 256 443Q315 397 399 420L419 353Q310 332 256 369Z" fill="#fff" stroke="#31d8ff" stroke-width="6"/><path d="M256 369V443" stroke="#1494f4" stroke-width="7"/>
+          </svg>
+          EOF
+          python - <<'PY'
+          import cairosvg
+          cairosvg.svg2png(url='/tmp/icon.svg',write_to='android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png',output_width=512,output_height=512)
+          PY
+      - name: Build APK
+        run: cd android && gradle --no-daemon assembleDebug
+      - name: Publish direct-download APK
+        run: |
+          mkdir -p downloads
+          cp android/app/build/outputs/apk/debug/app-debug.apk downloads/abqari-ai.apk
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add downloads/abqari-ai.apk
+          git commit -m 'Publish Abqari AI Android APK' || true
+          git push
+      - uses: actions/upload-artifact@v4
+        with:
+          name: abqari-ai-android-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
