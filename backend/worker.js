@@ -29,7 +29,18 @@ export default {async fetch(request,env){
     const preferred=['gemini-3.8-flash','gemini-3-flash','gemini-3.5-flash','gemini-2.5-flash-lite','gemini-2.5-flash','gemini-2.0-flash'];
     const model=preferred.map(id=>available.find(m=>m.name==='models/'+id)).find(Boolean)||available.find(m=>/gemini.*flash/i.test(m.name))||available.find(m=>/gemini/i.test(m.name));
     if(!model)return reply({error:'لا يوجد نموذج Gemini متاح لتوليد الإجابات بهذا المفتاح.'},502);
-    const upstream=await fetch('https://generativelanguage.googleapis.com/v1beta/'+model.name+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':env.GEMINI_API_KEY},body:JSON.stringify({systemInstruction:{parts:[{text:'You are Abqari AI, a helpful Arabic-first assistant. Respond clearly and accurately. App created by Bashir Qaddish (بشير قديش).'}]},contents,generationConfig:{maxOutputTokens:1000}})});
+    const candidates=[...new Set([...preferred.map(id=>'models/'+id),...available.map(m=>m.name)])].filter(name=>available.some(m=>m.name===name)).slice(0,5);
+    const payload=JSON.stringify({systemInstruction:{parts:[{text:'You are Abqari AI, a helpful Arabic-first assistant. Respond clearly and accurately. App created by Bashir Qaddish (بشير قديش).'}]},contents,generationConfig:{maxOutputTokens:1000}});
+    let upstream;
+    for(const name of candidates){
+      for(let attempt=0;attempt<2;attempt++){
+        upstream=await fetch('https://generativelanguage.googleapis.com/v1beta/'+name+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':env.GEMINI_API_KEY},body:payload});
+        if(upstream.ok)break;
+        if(![429,500,502,503,504].includes(upstream.status))break;
+        if(attempt===0)await new Promise(resolve=>setTimeout(resolve,700));
+      }
+      if(upstream.ok||![429,500,502,503,504].includes(upstream.status))break;
+    }
     if(!upstream.ok){const status=upstream.status;let detail={};try{detail=(await upstream.json()).error||{}}catch{}const raw=String(detail.message||'').toLowerCase();let reason='';if(/api.key.not.valid|api key not valid|invalid api key|api_key_invalid|api key is invalid/.test(raw))reason='مفتاح Gemini غير صالح، راجع القيمة المحفوظة في Cloudflare.';else if(/api key.*(expired|blocked)|key.*(expired|blocked)/.test(raw))reason='مفتاح Gemini منتهي أو محظور.';else if(/location|region|country|not supported/.test(raw))reason='الخدمة أو النموذج غير متاح في المنطقة أو للحساب.';else if(/quota|rate limit|resource exhausted/.test(raw))reason='تم بلوغ حد استخدام Gemini.';else if(/model.*not found|not found.*model/.test(raw))reason='النموذج غير متاح لهذا الحساب.';else if(/permission|not enabled|access/.test(raw))reason='صلاحيات الوصول إلى Gemini غير مكتملة.';else if(/invalid|malformed|bad request/.test(raw))reason='هناك إعداد غير صالح في طلب Gemini.';else if(status===404)reason='لم يجد Gemini النموذج المطلوب أو مسار الخدمة.';else reason='رفض Gemini الطلب دون سبب محدد.';const safeDetail=String(detail.message||'').replace(/AIza[0-9A-Za-z_-]{20,}/g,'[hidden]').replace(/key=[^\s&]+/gi,'key=[hidden]').slice(0,360);console.error('Gemini upstream error',status,model.name,safeDetail);return reply({error:`${reason} (Gemini ${status})${safeDetail?' — '+safeDetail:''}`},status===429?429:502)}
     const result=await upstream.json();const text=result.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('').trim();
     return text?reply({reply:text}):reply({error:'لم تصل إجابة من الخدمة'},502)
