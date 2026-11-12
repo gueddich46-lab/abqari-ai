@@ -1,4 +1,5 @@
 // Abqari AI — Cloudflare Worker proxy for Groq. Keep GROQ_API_KEY as a secret.
+// Redeploy the Groq proxy from GitHub to synchronize Cloudflare with the current source.
 const ORIGIN='https://gueddich46-lab.github.io';
 const headers={'Access-Control-Allow-Origin':ORIGIN,'Access-Control-Allow-Methods':'POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type','Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'};
 function reply(body,status=200){return new Response(JSON.stringify(body),{status,headers})}
