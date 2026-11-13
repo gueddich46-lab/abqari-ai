@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - '.github/workflows/android.yml'
+      - 'store-launcher.svg'
 permissions:
   contents: write
 jobs:
@@ -91,24 +92,12 @@ jobs:
             }
           }
           EOF
-      - name: Generate brain icon
+      - name: Generate exact store icon
         run: |
           python -m pip install cairosvg
-          cat > /tmp/icon.svg <<'EOF'
-          <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-          <defs><linearGradient id="g"><stop stop-color="#03d9ff"/><stop offset="1" stop-color="#d84bff"/></linearGradient><radialGradient id="bg"><stop stop-color="#172b69"/><stop offset="1" stop-color="#080d20"/></radialGradient></defs>
-          <rect width="512" height="512" rx="108" fill="url(#bg)"/>
-          <circle cx="256" cy="240" r="199" fill="none" stroke="url(#g)" stroke-width="7"/>
-          <path d="M249 139 C220 102 164 112 151 153 C103 151 91 206 117 229 C99 265 133 301 172 287 C192 318 231 304 249 277 M263 139 C292 102 348 112 361 153 C409 151 421 206 395 229 C413 265 379 301 340 287 C320 318 281 304 263 277" fill="none" stroke="url(#g)" stroke-width="13" stroke-linecap="round"/>
-          <g stroke="url(#g)" stroke-width="7" fill="none"><path d="M256 137V316 M162 185H209L240 215 M350 185H303L272 215 M151 241H211 M361 241H301 M199 282L237 255 M313 282L275 255"/></g>
-          <g fill="#66f5ff"><circle cx="162" cy="185" r="9"/><circle cx="350" cy="185" r="9"/><circle cx="151" cy="241" r="9"/><circle cx="361" cy="241" r="9"/></g>
-          <rect x="212" y="204" width="88" height="78" rx="15" fill="#07152f" stroke="#2ee9ff" stroke-width="8"/><text x="256" y="258" text-anchor="middle" font-family="Arial" font-weight="bold" font-size="43" fill="white">AI</text>
-          <path d="M256 369Q202 332 93 353L113 420Q197 397 256 443Q315 397 399 420L419 353Q310 332 256 369Z" fill="#fff" stroke="#31d8ff" stroke-width="6"/><path d="M256 369V443" stroke="#1494f4" stroke-width="7"/>
-          </svg>
-          EOF
           python - <<'PY'
           import cairosvg
-          cairosvg.svg2png(url='/tmp/icon.svg',write_to='android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png',output_width=512,output_height=512)
+          cairosvg.svg2png(url='store-launcher.svg',write_to='android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png',output_width=512,output_height=512)
           PY
       - name: Build APK
         run: cd android && gradle --no-daemon assembleDebug
