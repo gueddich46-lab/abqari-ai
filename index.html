@@ -14,6 +14,12 @@ html{--app-safe-top:env(safe-area-inset-top,0px);--app-safe-bottom:env(safe-area
 body{padding-top:var(--app-safe-top);padding-bottom:var(--app-safe-bottom)}
 html.android-embedded{--app-safe-top:max(34px,env(safe-area-inset-top,0px));--app-safe-bottom:max(18px,env(safe-area-inset-bottom,0px))}
 html.android-embedded .nav,html.android-embedded .head{top:var(--app-safe-top)}
+
+/* Abqari AI: explicit Android status bar clearance, including WebViews that omit safe-area values */
+@media (max-width: 900px){
+  body{padding-top:calc(38px + env(safe-area-inset-top,0px))!important;padding-bottom:max(18px,env(safe-area-inset-bottom,0px))!important}
+  .top{position:relative;top:auto!important}
+}
 </style><script>/* Android APK WebView and installed PWA status-bar clearance */
 (function(){var ua=navigator.userAgent||'';var android=/Android/i.test(ua);var embedded=/\\bwv\\b|; wv\\)|Version\\/[^ ]+ Chrome\\//i.test(ua);var standalone=window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches;var appRef=/^android-app:\/\//.test(document.referrer||'');if(android&&(embedded||standalone||appRef)){document.documentElement.classList.add('android-embedded');}})();
 </script></head><body><div class="wrap">
